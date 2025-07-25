@@ -17,54 +17,6 @@ internal class RocksManga(context: MangaLoaderContext) :
 
 	override val listUrl = "manga/"
 	override val tagPrefix = "manga-genre/"
-	
-	override val sortOrders: Set<SortOrder> = EnumSet.of(
-		SortOrder.UPDATED,
-		SortOrder.POPULARITY,
-		SortOrder.NEWEST,
-		SortOrder.ALPHABETICAL,
-	)
-
-	override suspend fun getListPage(page: Int, order: SortOrder, tag: MangaTag?): List<Manga> {
-		val url = buildString {
-			append("https://").append(domain)
-			when {
-				!tag?.key.isNullOrEmpty() -> {
-					append("/manga-genre/").append(tag!!.key).append("/")
-				}
-				else -> append("/")
-			}
-			if (page > 1) {
-				append("?page=").append(page)
-			}
-		}
-
-		val doc = webClient.httpGet(url).parseHtml()
-		
-		return doc.select("div.manga-item, .post, .wp-block-post").mapNotNull { div ->
-			val a = div.selectFirst("a") ?: return@mapNotNull null
-			val href = a.attrAsRelativeUrlOrNull("href") ?: return@mapNotNull null
-			val img = div.selectFirst("img") ?: return@mapNotNull null
-			
-			Manga(
-				id = generateUid(href),
-				url = href,
-				publicUrl = href.toAbsoluteUrl(domain),
-				coverUrl = img.src()?.toAbsoluteUrl(domain),
-				title = img.attr("alt").ifEmpty { 
-					a.selectFirst(".manga-title, .post-title, .wp-block-post-title")?.text() 
-						?: a.ownText() 
-				},
-				altTitle = null,
-				rating = RATING_UNKNOWN,
-				tags = emptySet(),
-				author = null,
-				state = null,
-				source = source,
-				isNsfw = false,
-			)
-		}
-	}
 
 	override suspend fun getDetails(manga: Manga): Manga {
 		val doc = webClient.httpGet(manga.url.toAbsoluteUrl(domain)).parseHtml()
@@ -80,7 +32,7 @@ internal class RocksManga(context: MangaLoaderContext) :
 		)
 	}
 
-	private suspend fun loadChapters(mangaUrl: String, document: Document): List<MangaChapter> {
+	override suspend fun loadChapters(mangaUrl: String, document: Document): List<MangaChapter> {
 		val chapters = mutableListOf<MangaChapter>()
 		
 		// جرب البحث عن الفصول في الصفحة الحالية
@@ -180,18 +132,4 @@ internal class RocksManga(context: MangaLoaderContext) :
 		}
 	}
 
-	override suspend fun getTags(): Set<MangaTag> {
-		val doc = webClient.httpGet("https://$domain/").parseHtml()
-		return doc.select("a[href*='genre'], a[href*='tag']").mapNotNullToSet { a ->
-			val href = a.attr("href") ?: return@mapNotNullToSet null
-			val key = href.substringAfterLast('/')
-			if (key.isBlank()) return@mapNotNullToSet null
-			
-			MangaTag(
-				key = key,
-				title = a.text(),
-				source = source,
-			)
-		}
-	}
 }
