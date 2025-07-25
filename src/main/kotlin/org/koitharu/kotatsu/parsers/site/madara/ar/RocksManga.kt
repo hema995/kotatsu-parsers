@@ -4,7 +4,7 @@ import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import org.koitharu.kotatsu.parsers.MangaLoaderContext
 import org.koitharu.kotatsu.parsers.MangaSourceParser
-import org.koitharu.kotatsu.parsers.PagedMangaParser
+import org.koitharu.kotatsu.parsers.site.madara.MadaraParser
 import org.koitharu.kotatsu.parsers.config.ConfigKey
 import org.koitharu.kotatsu.parsers.model.*
 import org.koitharu.kotatsu.parsers.util.*
@@ -13,10 +13,11 @@ import java.util.*
 
 @MangaSourceParser("ROCKSMANGA", "RocksManga", "ar")
 internal class RocksManga(context: MangaLoaderContext) :
-	PagedMangaParser(context, MangaParserSource.ROCKSMANGA, pageSize = 20) {
+	MadaraParser(context, MangaParserSource.ROCKSMANGA, "rockscans.org") {
 
-	override val configKeyDomain = ConfigKey.Domain("rockscans.org")
-
+	override val listUrl = "manga/"
+	override val tagPrefix = "manga-genre/"
+	
 	override val sortOrders: Set<SortOrder> = EnumSet.of(
 		SortOrder.UPDATED,
 		SortOrder.POPULARITY,
@@ -104,11 +105,12 @@ internal class RocksManga(context: MangaLoaderContext) :
 			
 			chapterElements = mangaDoc.select("a[href*='/chapter/'], a[href*='/الفصل/']")
 			if (chapterElements.isEmpty()) {
-				chapterElements = mangaDoc.select("a").filter { 
+				val filteredElements = mangaDoc.select("a").filter { 
 					it.attr("href").contains("chapter", ignoreCase = true) ||
 					it.text().contains("فصل", ignoreCase = true) ||
 					it.text().contains("chapter", ignoreCase = true)
 				}
+				chapterElements = org.jsoup.select.Elements(filteredElements)
 			}
 		}
 		
